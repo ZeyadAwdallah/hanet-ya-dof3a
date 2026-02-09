@@ -436,34 +436,34 @@ function App() {
     }
   }
 
-  // Share URL with Open Graph meta tags
-  const shareURL = async () => {
-    try {
-      const baseURL = window.location.origin + window.location.pathname;
-      const shareableURL = `${baseURL}?date=${targetDateISO}`;
+  // // Share URL with Open Graph meta tags
+  // const shareURL = async () => {
+  //   try {
+  //     const baseURL = window.location.origin + window.location.pathname;
+  //     const shareableURL = `${baseURL}?date=${targetDateISO}`;
       
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: 'عدّاد نهاية الخدمة العسكرية',
-            text: `باقي ${days} يوم على نهاية الخدمة! التاريخ المستهدف: ${formatDMY(targetDateISO)}`,
-            url: shareableURL
-          });
-          return;
-        } catch (shareError) {
-          console.log('Native share failed, trying fallback');
-        }
-      }
+  //     if (navigator.share) {
+  //       try {
+  //         await navigator.share({
+  //           title: 'عدّاد نهاية الخدمة العسكرية',
+  //           text: `باقي ${days} يوم على نهاية الخدمة! التاريخ المستهدف: ${formatDMY(targetDateISO)}`,
+  //           url: shareableURL
+  //         });
+  //         return;
+  //       } catch (shareError) {
+  //         console.log('Native share failed, trying fallback');
+  //       }
+  //     }
 
-      // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(shareableURL);
-      showNotification('تم نسخ الرابط! يمكنك مشاركته الآن', 'success');
+  //     // Fallback: copy to clipboard
+  //     await navigator.clipboard.writeText(shareableURL);
+  //     showNotification('تم نسخ الرابط! يمكنك مشاركته الآن', 'success');
       
-    } catch (error) {
-      console.error('Share URL failed:', error);
-      showNotification(`خطأ في المشاركة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`, 'error');
-    }
-  }
+  //   } catch (error) {
+  //     console.error('Share URL failed:', error);
+  //     showNotification(`خطأ في المشاركة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`, 'error');
+  //   }
+  // }
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center bg-[url(./assets/army.jpg)] bg-cover bg-center p-4">
