@@ -18,10 +18,10 @@
 
 /* Custom countdown card styles with army theme */
 .countdown-card {
-  padding: 1.25rem;
+  padding: 1rem;
   background: linear-gradient(135deg, rgba(180, 83, 9, 0.2), rgba(146, 64, 14, 0.3));
   backdrop-filter: blur(4px);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   border: 1px solid rgba(245, 158, 11, 0.3);
   box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
   transform: scale(1);
@@ -34,15 +34,15 @@
 }
 
 .countdown-number {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
+  font-size: 1.75rem;
+  line-height: 2rem;
   font-weight: 900;
   color: #fbbf24;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 
 .countdown-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   line-height: 1rem;
   color: rgba(254, 243, 199, 0.9);
   font-weight: 500;
@@ -65,7 +65,7 @@
   right: 0;
   bottom: 0;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(180, 83, 9, 0.1));
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -75,13 +75,33 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 640px) {
-  .countdown-number {
-    font-size: 1.875rem;
-    line-height: 2.25rem;
+@media (min-width: 640px) {
+  .countdown-card {
+    padding: 1.25rem;
+    border-radius: 1rem;
   }
   
-  .countdown-card {
-    padding: 0.75rem;
+  .countdown-number {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+  
+  .countdown-label {
+    font-size: 0.75rem;
+  }
+  
+  .countdown-card::before {
+    border-radius: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .countdown-number {
+    font-size: 2.5rem;
+    line-height: 2.75rem;
+  }
+  
+  .countdown-label {
+    font-size: 0.875rem;
   }
 }

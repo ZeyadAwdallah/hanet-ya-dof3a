@@ -466,18 +466,18 @@ function App() {
   // }
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-[url(./assets/army.jpg)] bg-cover bg-center p-4">
-      <div className="backdrop-blur-lg bg-linear-to-br from-amber-900/50 to-yellow-900/60 p-6 sm:p-8 rounded-3xl text-white max-w-2xl w-full mx-auto shadow-2xl border border-amber-400/40">
+    <div className="w-full min-h-screen flex items-center justify-center bg-[url(./assets/army.jpg)] bg-cover bg-center p-2 sm:p-4">
+      <div className="backdrop-blur-lg bg-linear-to-br from-amber-900/50 to-yellow-900/60 p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl text-white max-w-2xl w-full mx-auto shadow-2xl border border-amber-400/40">
         
         {/* Header with enhanced glow effect */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl sm:text-5xl font-black mb-3 relative">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 relative">
             <span className="bg-linear-to-r mx-auto from-amber-200 via-amber-300 to-amber-200 bg-clip-text text-transparent drop-shadow-lg">
               هانت يا دفعة
             </span>
           </h1>
-          <div className="h-1.5 bg-linear-to-r from-transparent via-amber-400 to-transparent rounded-full mb-4 max-w-xs"></div>
-          <p className="text-lg sm:text-xl font-semibold text-amber-100">عدّاد نهاية الخدمة العسكرية</p>
+          <div className="h-1 sm:h-1.5 bg-linear-to-r from-transparent via-amber-400 to-transparent rounded-full mb-3 sm:mb-4 max-w-xs mx-auto"></div>
+          <p className="text-base sm:text-lg md:text-xl font-semibold text-amber-100">عدّاد نهاية الخدمة العسكرية</p>
         </div>
 {/* 
         <p className="text-center text-base text-amber-100/90 mb-8 leading-relaxed ">
@@ -485,43 +485,43 @@ function App() {
         </p> */}
 
         {/* Controls with better styling */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mb-10 p-4 bg-amber-900/30 rounded-2xl border border-amber-400/30">
-          <div className="flex items-center gap-4">
-            <span className="text-base font-medium text-amber-100 shrink-0">تاريخ النهاية:</span>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-4 mb-6 sm:mb-10 p-3 sm:p-4 bg-amber-900/30 rounded-xl sm:rounded-2xl border border-amber-400/30">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <span className="text-sm sm:text-base font-medium text-amber-100 shrink-0">تاريخ النهاية:</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <input
                 type="text"
                 value={toArabicNumerals(day)}
                 onChange={(e) => handleDatePartChange('day', e.target.value)}
                 maxLength={2}
                 placeholder="يوم"
-                className="w-20 px-3 py-2.5 rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center"
+                className="w-16 sm:w-20 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
               />
-              <span className="text-amber-200 font-bold">/</span>
+              <span className="text-amber-200 font-bold text-sm sm:text-base">/</span>
               <input
                 type="text"
                 value={toArabicNumerals(month)}
                 onChange={(e) => handleDatePartChange('month', e.target.value)}
                 maxLength={2}
                 placeholder="شهر"
-                className="w-20 px-3 py-2.5 rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center"
+                className="w-16 sm:w-20 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
               />
-              <span className="text-amber-200 font-bold">/</span>
+              <span className="text-amber-200 font-bold text-sm sm:text-base">/</span>
               <input
                 type="text"
                 value={toArabicNumerals(year)}
                 onChange={(e) => handleDatePartChange('year', e.target.value)}
                 maxLength={4}
                 placeholder="سنة"
-                className="w-28 px-3 py-2.5 rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center"
+                className="w-20 sm:w-28 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
               />
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex justify-center">
             <button 
               onClick={resetDate} 
-              className="px-5 py-2.5 bg-linear-to-r from-amber-500 to-amber-600 text-amber-900 rounded-xl font-semibold shadow-lg hover:from-amber-600 hover:to-amber-700 transform hover:scale-105 transition-all duration-200"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-linear-to-r from-amber-500 to-amber-600 text-amber-900 rounded-lg sm:rounded-xl font-semibold shadow-lg hover:from-amber-600 hover:to-amber-700 transform hover:scale-105 transition-all duration-200 text-sm sm:text-base"
             >
               اختيار افتراضي
             </button>
@@ -529,7 +529,7 @@ function App() {
         </div>
 
         {/* Enhanced countdown display */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 text-center mb-6 sm:mb-8">
           <div className="countdown-card">
             <div className="countdown-number">{toArabicNumerals(days)}</div>
             <div className="countdown-label">أيام</div>
@@ -549,13 +549,13 @@ function App() {
         </div>
 
         {/* Share button and target date */}
-        <div className="text-center space-y-5 ">
-          <div className="flex gap-3">
+        <div className="text-center space-y-4 sm:space-y-5">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={shareCountdown}
-              className="flex-1 py-3.5 bg-linear-to-r from-amber-600 to-amber-700 rounded-2xl font-bold text-lg shadow-xl hover:from-amber-700 hover:to-amber-800 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 text-amber-100"
+              className="flex-1 py-3 sm:py-3.5 bg-linear-to-r from-amber-600 to-amber-700 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg shadow-xl hover:from-amber-700 hover:to-amber-800 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 text-amber-100"
             >
-              احفظ العدّاد
+              شارك العدّاد
             </button>
             {/* <button
               onClick={shareURL}
@@ -565,8 +565,8 @@ function App() {
             </button> */}
           </div>
           
-          <p className="text-base text-amber-200/80 w-fit mx-auto">
-            التاريخ المستهدف: <span className="font-bold text-amber-300 text-lg">{formatDMY(targetDateISO)}</span>
+          <p className="text-sm sm:text-base text-amber-200/80 w-fit mx-auto px-2">
+            التاريخ المستهدف: <span className="font-bold text-amber-300 text-base sm:text-lg">{formatDMY(targetDateISO)}</span>
           </p>
         </div>
       </div>
