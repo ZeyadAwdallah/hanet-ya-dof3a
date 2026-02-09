@@ -557,12 +557,12 @@ function App() {
             >
               احفظ العدّاد
             </button>
-            <button
+            {/* <button
               onClick={shareURL}
               className="flex-1 py-3.5 bg-linear-to-r from-amber-500 to-amber-400 rounded-2xl font-bold text-lg shadow-xl hover:from-amber-600 hover:to-amber-500 tr  ansform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 text-white"
             >
               شارك الرابط
-            </button>
+            </button> */}
           </div>
           
           <p className="text-base text-amber-200/80 w-fit mx-auto">
