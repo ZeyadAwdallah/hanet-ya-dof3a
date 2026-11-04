@@ -86,7 +86,6 @@ export default function App() {
   const [profile, setProfile] = useState<Profile>(getInitialProfile);
   const [now, setNow] = useState(() => new Date());
   const [copied, setCopied] = useState(false);
-  const [posterState, setPosterState] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
