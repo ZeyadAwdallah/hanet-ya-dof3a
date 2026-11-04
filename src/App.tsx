@@ -1,585 +1,281 @@
-import { useEffect, useState } from 'react'
-import './style.css'
-import camouflageBg from './assets/canvasbg.jpg'
+import { useEffect, useMemo, useState } from "react";
+import "./style.css";
 
-// Modal notification component
-interface NotificationProps {
-  message: string
-  type: 'success' | 'error' | 'info'
-  isOpen: boolean
-  onClose: () => void
+type BatchMonth = 3 | 6 | 9 | 12;
+
+const BATCHES: { month: BatchMonth; label: string }[] = [
+  { month: 3, label: "مارس" },
+  { month: 6, label: "يونيو" },
+  { month: 9, label: "سبتمبر" },
+  { month: 12, label: "ديسمبر" },
+];
+
+// Durations are selectable month counts, not official qualification mappings.
+const COMMON_DURATIONS = [12, 14, 18, 19, 24, 36, 38];
+const STORAGE_KEY = "military-service-profile-v2";
+
+type Profile = {
+  batchMonth: BatchMonth;
+  enlistmentYear: number;
+  durationMonths: number;
+};
+
+function addMonthsFromFirstDay(year: number, month: number, months: number) {
+  return new Date(year, month - 1 + months, 1);
 }
 
-function NotificationModal({ message, type, isOpen, onClose }: NotificationProps) {
+function formatDate(date: Date, long = true) {
+  return new Intl.DateTimeFormat("ar-EG", {
+    day: "numeric",
+    month: long ? "long" : "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDuration(months: number) {
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+  const parts: string[] = [];
+  if (years) parts.push(`${years} سنة`);
+  if (remainingMonths) parts.push(`${remainingMonths} شهر`);
+  return parts.join(" و ") || "0 شهر";
+}
+
+function getInitialProfile(): Profile {
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = {
+    batchMonth: Number(params.get("batch")) as BatchMonth,
+    enlistmentYear: Number(params.get("year")),
+    durationMonths: Number(params.get("months")),
+  };
+
+  if (
+    [3, 6, 9, 12].includes(fromUrl.batchMonth) &&
+    fromUrl.enlistmentYear >= 2000 &&
+    fromUrl.enlistmentYear <= 2100 &&
+    fromUrl.durationMonths >= 1 &&
+    fromUrl.durationMonths <= 60
+  ) return fromUrl;
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Profile;
+      if (
+        [3, 6, 9, 12].includes(parsed.batchMonth) &&
+        parsed.enlistmentYear >= 2000 &&
+        parsed.enlistmentYear <= 2100 &&
+        parsed.durationMonths >= 1 &&
+        parsed.durationMonths <= 60
+      ) return parsed;
+    }
+  } catch {
+    // Ignore malformed local storage and fall back to a sensible default.
+  }
+
+  const now = new Date();
+  const nextBatch = BATCHES.find((batch) => batch.month > now.getMonth() + 1);
+  return {
+    batchMonth: nextBatch?.month ?? 3,
+    enlistmentYear: nextBatch ? now.getFullYear() : now.getFullYear() + 1,
+    durationMonths: 12,
+  };
+}
+
+export default function App() {
+  const [profile, setProfile] = useState<Profile>(getInitialProfile);
+  const [now, setNow] = useState(() => new Date());
+  const [copied, setCopied] = useState(false);
+  const [posterState, setPosterState] = useState<"idle" | "loading" | "error">("idle");
+
   useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        onClose()
-      }, 4000) // Auto close after 4 seconds
-      return () => clearTimeout(timer)
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    const url = new URL(window.location.href);
+    url.searchParams.set("batch", String(profile.batchMonth));
+    url.searchParams.set("year", String(profile.enlistmentYear));
+    url.searchParams.set("months", String(profile.durationMonths));
+    window.history.replaceState({}, "", url);
+  }, [profile]);
+
+  const enlistmentDate = useMemo(
+    () => new Date(profile.enlistmentYear, profile.batchMonth - 1, 1),
+    [profile],
+  );
+  const completionBoundary = useMemo(
+    () => addMonthsFromFirstDay(profile.enlistmentYear, profile.batchMonth, profile.durationMonths),
+    [profile],
+  );
+  const lastServiceDay = useMemo(
+    () => new Date(completionBoundary.getFullYear(), completionBoundary.getMonth(), 0),
+    [completionBoundary],
+  );
+
+  const totalDurationMs = completionBoundary.getTime() - enlistmentDate.getTime();
+  const elapsedMs = Math.min(Math.max(now.getTime() - enlistmentDate.getTime(), 0), totalDurationMs);
+  const progress = totalDurationMs > 0 ? (elapsedMs / totalDurationMs) * 100 : 0;
+  const target = new Date(lastServiceDay);
+  target.setHours(23, 59, 59, 999);
+  const remainingMs = Math.max(target.getTime() - now.getTime(), 0);
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const started = now >= enlistmentDate;
+  const completed = now > target;
+
+  function update<K extends keyof Profile>(key: K, value: Profile[K]) {
+    setProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  async function share() {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "عداد الخدمة العسكرية", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2200);
+      }
+    } catch {
+      // Closing the native share sheet is not an app error.
     }
-  }, [isOpen, onClose])
-
-  if (!isOpen) return null
-
-  const bgColor = {
-    success: 'from-green-600 to-green-700',
-    error: 'from-red-600 to-red-700',
-    info: 'from-amber-600 to-amber-700'
-  }[type]
-
-  const icon = {
-    success: '✓',
-    error: '✕',
-    info: 'ℹ'
-  }[type]
-
-  return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div 
-        className={`bg-linear-to-r ${bgColor} text-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-white/20 animate-fade-in`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-4">
-          <div className="text-2xl font-bold">{icon}</div>
-          <div className="flex-1">
-            <p className="text-lg font-medium leading-relaxed">{message}</p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-xl font-bold ml-2"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function App() {
-  // Function to convert English numbers to Arabic
-  const toArabicNumerals = (num: number | string) => {
-    const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
-    return String(num).replace(/[0-9]/g, (d) => arabicNumerals[parseInt(d)])
   }
 
-  const toEnglishNumerals = (str: string) => {
-    const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
-    return str.replace(/[٠-٩]/g, (d) => String(arabicNumerals.indexOf(d)))
-  }
-
-  // Function to format date as dd-mm-yyyy
-  const formatDMY = (isoDate: string) => {
-    const date = new Date(isoDate)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${toArabicNumerals(day)}-${toArabicNumerals(month)}-${toArabicNumerals(year)}`
-  }
-  // cookie name to persist the chosen end date
-  const COOKIE_NAME = 'service_end_date'
-
-  // helpers for cookies
-  function setCookie(name: string, value: string, days = 3650) {
-    const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString()
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
-  }
-  function getCookie(name: string) {
-    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')
-    return v ? decodeURIComponent(v.pop() || '') : null
-  }
-
-  // i need to make the default date is the third month of the next year
-  function defaultDateISO() {
-    const d = new Date()
-    d.setFullYear(d.getFullYear() + 1)
-    d.setMonth(2) // March (0-based index)
-    d.setDate(1) // First day of the month
-    // keep only date portion
-    return d.toISOString().slice(0, 10)
-  }
-
-  const [targetDateISO, setTargetDateISO] = useState<string>(() => {
-    // Check URL parameters first
-    const urlParams = new URLSearchParams(window.location.search);
-    const dateParam = urlParams.get('date');
-    if (dateParam) {
-      return dateParam;
-    }
-    return getCookie(COOKIE_NAME) || defaultDateISO();
-  })
-  const [now, setNow] = useState<Date>(new Date())
   
-  // State for individual date parts
-  const [day, setDay] = useState<string>('');
-  const [month, setMonth] = useState<string>('');
-  const [year, setYear] = useState<string>('');
 
-  // Notification state
-  const [notification, setNotification] = useState<{
-    message: string
-    type: 'success' | 'error' | 'info'
-    isOpen: boolean
-  }>({
-    message: '',
-    type: 'info',
-    isOpen: false
-  })
-
-  const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
-    setNotification({ message, type, isOpen: true })
+  function  reset() {
+    const fresh = getInitialProfile();
+    setProfile({ ...fresh, durationMonths: 12 });
   }
-
-  const closeNotification = () => {
-    setNotification(prev => ({ ...prev, isOpen: false }))
-  }
-
-  useEffect(() => {
-    // persist initial target date if cookie not already set
-    if (!getCookie(COOKIE_NAME)) setCookie(COOKIE_NAME, targetDateISO)
-    
-    // Update Open Graph meta tags
-    const updateMetaTags = () => {
-      const target = new Date(targetDateISO + 'T23:59:59')
-      const diffTime = Math.max(0, target.getTime() - Date.now())
-      const daysRemaining = Math.floor(diffTime / (24 * 60 * 60 * 1000))
-      
-      const title = `عدّاد نهاية الخدمة العسكرية - باقي ${toArabicNumerals(daysRemaining)} يوم`
-      const description = `التاريخ المستهدف: ${formatDMY(targetDateISO)} - هانت يا دفعة!`
-      
-      // Update document title
-      document.title = title
-      
-      // Update or create meta tags
-      const updateMeta = (property: string, content: string) => {
-        let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement
-        if (!meta) {
-          meta = document.createElement('meta')
-          meta.setAttribute('property', property)
-          document.head.appendChild(meta)
-        }
-        meta.content = content
-      }
-      
-      updateMeta('og:title', title)
-      updateMeta('og:description', description)
-      updateMeta('og:url', window.location.href)
-      updateMeta('og:type', 'website')
-    }
-    
-    updateMetaTags()
-  }, [targetDateISO])
-
-  // Effect to sync individual date inputs with the main ISO date state
-  useEffect(() => {
-    try {
-      const date = new Date(targetDateISO);
-      if (!isNaN(date.getTime())) {
-        setDay(String(date.getDate()).padStart(2, '0'));
-        setMonth(String(date.getMonth() + 1).padStart(2, '0'));
-        setYear(String(date.getFullYear()));
-      }
-    } catch (e) {
-      console.error("Error parsing date for inputs:", e);
-    }
-  }, [targetDateISO]);
-
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  function handleDatePartChange(part: 'day' | 'month' | 'year', value: string) {
-    const englishValue = toEnglishNumerals(value);
-    const numericValue = englishValue.replace(/[^0-9]/g, '');
-    
-    let newDay = part === 'day' ? numericValue : day;
-    let newMonth = part === 'month' ? numericValue : month;
-    let newYear = part === 'year' ? numericValue : year;
-
-    // Update local state for inputs
-    if (part === 'day') setDay(numericValue);
-    if (part === 'month') setMonth(numericValue);
-    if (part === 'year') setYear(numericValue);
-
-    // Basic validation and date construction
-    const dayNum = parseInt(newDay, 10);
-    const monthNum = parseInt(newMonth, 10);
-    const yearNum = parseInt(newYear, 10);
-
-    if (dayNum > 0 && monthNum > 0 && monthNum <= 12 && String(newYear).length === 4) {
-      // Clamp day to the max number of days in the given month
-      const maxDays = new Date(yearNum, monthNum, 0).getDate();
-      const clampedDay = Math.min(dayNum, maxDays);
-
-      const newDate = new Date(yearNum, monthNum - 1, clampedDay);
-      if (!isNaN(newDate.getTime())) {
-        // Check if date is in the past
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (newDate < today) {
-          showNotification('لا يمكن اختيار تاريخ في الماضي', 'error');
-          return;
-        }
-        
-        const newISO = newDate.toISOString().slice(0, 10);
-        setTargetDateISO(newISO);
-        setCookie(COOKIE_NAME, newISO);
-      }
-    }
-  }
-
-  function resetDate() {
-    const d = defaultDateISO()
-    setTargetDateISO(d)
-    setCookie(COOKIE_NAME, d)
-  }
-
-  // calculate remaining time until end of the chosen day (end of day)
-  const target = new Date(targetDateISO + 'T23:59:59')
-  let diff = Math.max(0, target.getTime() - now.getTime())
-
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  diff -= days * 24 * 60 * 60 * 1000
-  const hours = Math.floor(diff / (60 * 60 * 1000))
-  diff -= hours * 60 * 60 * 1000
-  const minutes = Math.floor(diff / (60 * 1000))
-  diff -= minutes * 60 * 1000
-  const seconds = Math.floor(diff / 1000)
-
-  // Professional canvas-based share functionality
-  const shareCountdown = async () => {
-    try {
-      // Create canvas
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        showNotification('خطأ: لا يمكن إنشاء Canvas', 'error')
-        return
-      }
-
-      // Set canvas size for social media (Instagram post size)
-      canvas.width = 1080
-      canvas.height = 1080
-
-      // Load and draw the background image
-      const bgImage = new Image();
-      bgImage.src = camouflageBg;
-      
-      await new Promise(resolve => {
-        bgImage.onload = () => {
-          ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-          resolve(true);
-        };
-        bgImage.onerror = () => {
-          // Fallback to gradient if image fails to load
-          const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width/2)
-          gradient.addColorStop(0, '#451a03')
-          gradient.addColorStop(0.4, '#78350f')
-          gradient.addColorStop(1, '#1c1917')
-          ctx.fillStyle = gradient
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-          resolve(false); // or reject
-        }
-      });
-      
-      // Add a darker semi-transparent overlay to improve text readability
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Main content background card
-      const cardX = 90
-      const cardY = 150
-      const cardWidth = canvas.width - 180
-      const cardHeight = 780
-
-      // Card background with subtle gradient
-      const cardGradient = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardHeight)
-      cardGradient.addColorStop(0, 'rgba(245, 158, 11, 0.15)')
-      cardGradient.addColorStop(1, 'rgba(180, 83, 9, 0.15)')
-      
-      ctx.fillStyle = cardGradient
-      ctx.fillRect(cardX, cardY, cardWidth, cardHeight)
-
-      // Card border
-      ctx.strokeStyle = '#f59e0b'
-      ctx.lineWidth = 3
-      ctx.strokeRect(cardX, cardY, cardWidth, cardHeight)
-
-      // Header section
-      ctx.textAlign = 'center'
-      ctx.fillStyle = '#fbbf24'
-      
-      // Main title with better typography
-      ctx.font = 'bold 72px "Segoe UI", Arial, sans-serif'
-      ctx.fillText('هانت يا دفعة', canvas.width / 2, 280)
-      
-      // Subtitle
-      ctx.font = '36px "Segoe UI", Arial, sans-serif'
-      ctx.fillStyle = '#fde68a'
-      ctx.fillText('عدّاد نهاية الخدمة العسكرية', canvas.width / 2, 340)
-
-      // Decorative line
-      ctx.strokeStyle = '#f59e0b'
-      ctx.lineWidth = 4
-      ctx.beginPath()
-      ctx.moveTo(canvas.width / 2 - 200, 370)
-      ctx.lineTo(canvas.width / 2 + 200, 370)
-      ctx.stroke()
-
-      // Countdown section with professional layout
-      const boxWidth = 180
-      const boxHeight = 180
-      const startX = (canvas.width - (4 * boxWidth + 3 * 40)) / 2
-      const boxY = 450
-
-      const countdownData = [
-        { value: toArabicNumerals(days), label: 'أيام' },
-        { value: toArabicNumerals(String(hours).padStart(2, '0')), label: 'ساعات' },
-        { value: toArabicNumerals(String(minutes).padStart(2, '0')), label: 'دقائق' },
-        { value: toArabicNumerals(String(seconds).padStart(2, '0')), label: 'ثواني' }
-      ]
-
-      countdownData.forEach((item, index) => {
-        const x = startX + index * (boxWidth + 40)
-        
-        // Box background with gradient
-        const boxGradient = ctx.createLinearGradient(x, boxY, x, boxY + boxHeight)
-        //use the amber colors with low opacity for a subtle effect
-      boxGradient.addColorStop(0, 'rgba(245, 158, 11, 0.25)')
-      boxGradient.addColorStop(1, 'rgba(180, 83, 9, 0.25)')
-        
-        ctx.fillStyle = boxGradient
-        ctx.fillRect(x, boxY, boxWidth, boxHeight)
-        
-        // Box border
-        ctx.strokeStyle = '#f59e0b'
-        ctx.lineWidth = 2
-        ctx.strokeRect(x, boxY, boxWidth, boxHeight)
-        
-        // Number
-        ctx.font = 'bold 64px "Segoe UI", Arial, sans-serif'
-        ctx.fillStyle = '#fbbf24'
-        ctx.textAlign = 'center'
-        ctx.fillText(String(item.value), x + boxWidth/2, boxY + boxHeight/2 + 10)
-        
-        // Label
-        ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif'
-        ctx.fillStyle = '#fde68a'
-        ctx.fillText(item.label, x + boxWidth/2, boxY + boxHeight - 30)
-      })
-
-      // Bottom section
-      ctx.textAlign = 'center'
-      
-      // Target date with better styling
-      ctx.font = '32px "Segoe UI", Arial, sans-serif'
-      ctx.fillStyle = '#fbbf24'
-      ctx.fillText(`التاريخ المستهدف: ${formatDMY(targetDateISO)}`, canvas.width / 2, 750)
-
-      // Professional footer
-      ctx.font = '28px "Segoe UI", Arial, sans-serif'
-      ctx.fillStyle = '#fde68a'
-      ctx.fillText(`باقي ${toArabicNumerals(days)} يوم على انتهاء الخدمة العسكرية`, canvas.width / 2, 820)
-
-      // Subtle branding
-      ctx.font = '18px "Segoe UI", Arial, sans-serif'
-      ctx.fillStyle = '#9ca3af'
-      ctx.fillText('تم إنشاؤها بواسطة عدّاد الخدمة العسكرية', canvas.width / 2, 980)
-
-      // Convert to blob and share
-      canvas.toBlob(async (blob: Blob | null) => {
-        if (!blob) {
-          showNotification('فشل في إنشاء الصورة', 'error')
-          return
-        }
-
-        // Try native sharing first (mobile)
-        if (navigator.share && navigator.canShare) {
-          try {
-            const file = new File([blob], 'military-countdown.png', { type: 'image/png' })
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({
-                title: 'عدّاد نهاية الخدمة العسكرية',
-                text: `باقي ${days} يوم على نهاية الخدمة!`,
-                files: [file]
-              })
-              return
-            }
-          } catch (shareError) {
-            console.log('Native share failed, trying fallback')
-          }
-        }
-
-        // Fallback: download image
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `military-countdown-${new Date().toISOString().slice(0,10)}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        
-        showNotification('تم حفظ الصورة بنجاح! يمكنك مشاركتها على وسائل التواصل الاجتماعي', 'success')
-      }, 'image/png', 0.95)
-      
-    } catch (error) {
-      console.error('Share failed:', error)
-      showNotification(`خطأ في المشاركة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`, 'error')
-    }
-  }
-
-  // // Share URL with Open Graph meta tags
-  // const shareURL = async () => {
-  //   try {
-  //     const baseURL = window.location.origin + window.location.pathname;
-  //     const shareableURL = `${baseURL}?date=${targetDateISO}`;
-      
-  //     if (navigator.share) {
-  //       try {
-  //         await navigator.share({
-  //           title: 'عدّاد نهاية الخدمة العسكرية',
-  //           text: `باقي ${days} يوم على نهاية الخدمة! التاريخ المستهدف: ${formatDMY(targetDateISO)}`,
-  //           url: shareableURL
-  //         });
-  //         return;
-  //       } catch (shareError) {
-  //         console.log('Native share failed, trying fallback');
-  //       }
-  //     }
-
-  //     // Fallback: copy to clipboard
-  //     await navigator.clipboard.writeText(shareableURL);
-  //     showNotification('تم نسخ الرابط! يمكنك مشاركته الآن', 'success');
-      
-  //   } catch (error) {
-  //     console.error('Share URL failed:', error);
-  //     showNotification(`خطأ في المشاركة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`, 'error');
-  //   }
-  // }
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-[url(./assets/army.jpg)] bg-cover bg-center p-2 sm:p-4">
-      <div className="backdrop-blur-lg bg-linear-to-br from-amber-900/50 to-yellow-900/60 p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl text-white max-w-2xl w-full mx-auto shadow-2xl border border-amber-400/40">
-        
-        {/* Header with enhanced glow effect */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 relative">
-            <span className="bg-linear-to-r mx-auto from-amber-200 via-amber-300 to-amber-200 bg-clip-text text-transparent drop-shadow-lg">
-              هانت يا دفعة
-            </span>
-          </h1>
-          <div className="h-1 sm:h-1.5 bg-linear-to-r from-transparent via-amber-400 to-transparent rounded-full mb-3 sm:mb-4 max-w-xs mx-auto"></div>
-          <p className="text-base sm:text-lg md:text-xl font-semibold text-amber-100">عدّاد نهاية الخدمة العسكرية</p>
-        </div>
-{/* 
-        <p className="text-center text-base text-amber-100/90 mb-8 leading-relaxed ">
-          اختر تاريخ نهاية الخدمة أو اقبل التاريخ الافتراضي. التاريخ محفوظ وسيستمر العدّاد في الظهور عند كل زيارة.
-        </p> */}
+    <main dir="rtl" className="relative min-h-screen overflow-hidden bg-[#10110f] px-3 py-5 font-[Cairo] text-[#f4f2ed] sm:px-5 sm:py-8">
+      <div className="pointer-events-none absolute -right-40 top-1/4 h-80 w-80 rounded-full bg-[#d59a43]/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-[#66734b]/10 blur-[110px]" />
 
-        {/* Controls with better styling */}
-        <div className="flex flex-col gap-4 mb-6 sm:mb-10 p-3 sm:p-4 bg-amber-900/30 rounded-xl sm:rounded-2xl border border-amber-400/30">
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-            <span className="text-sm sm:text-base font-medium text-amber-100 shrink-0">تاريخ النهاية:</span>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <input
-                type="text"
-                value={toArabicNumerals(day)}
-                onChange={(e) => handleDatePartChange('day', e.target.value)}
-                maxLength={2}
-                placeholder="يوم"
-                className="w-16 sm:w-20 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
-              />
-              <span className="text-amber-200 font-bold text-sm sm:text-base">/</span>
-              <input
-                type="text"
-                value={toArabicNumerals(month)}
-                onChange={(e) => handleDatePartChange('month', e.target.value)}
-                maxLength={2}
-                placeholder="شهر"
-                className="w-16 sm:w-20 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
-              />
-              <span className="text-amber-200 font-bold text-sm sm:text-base">/</span>
-              <input
-                type="text"
-                value={toArabicNumerals(year)}
-                onChange={(e) => handleDatePartChange('year', e.target.value)}
-                maxLength={4}
-                placeholder="سنة"
-                className="w-20 sm:w-28 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-amber-900 bg-amber-50 font-medium shadow-lg focus:ring-2 focus:ring-amber-400 transition-all text-center text-sm sm:text-base"
-              />
+      <div className="relative mx-auto w-full max-w-[650px]">
+        <header className="flex items-center justify-between pb-8 text-xs text-[#c5c2b8]">
+          <a href="/" aria-label="عداد الخدمة" className="flex items-center gap-2.5 text-sm font-extrabold text-[#f4f2ed] no-underline">
+        <img src="src/assets/icon.png" alt="" className="w-12 l-12"/>
+            <span>عداد الخدمة</span>
+          </a>
+          <span className="text-[#858579]">حاسبة الخدمة العسكرية</span>
+        </header>
+
+        <section className="px-2 pb-7 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d6ad70]/20 bg-[#d6ad70]/[0.07] px-3 py-1 text-[11px] font-bold text-[#d6ad70]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#a8bd78] shadow-[0_0_10px_#a8bd78]" />
+            العد التنازلي بدأ
+          </div>
+          <h1 className="my-2 text-[clamp(38px,8vw,58px)] font-black leading-tight tracking-[-1.8px] text-[#f2eee5]">هانت يا دفعة.</h1>
+          <p className="m-0 text-[13px] text-[#929187]">احسب نهاية خدمتك في ثواني، وسيب الحسابات علينا بدل ورقة وقلم.</p>
+        </section>
+
+        <section aria-labelledby="setup-title" className="rounded-[20px] border border-white/[0.09] bg-[#1e1f1a]/90 p-[18px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:p-[23px]">
+          <div className="mb-[22px] flex items-center justify-between">
+            <div>
+              <span className="mb-0.5 block text-[11px] font-bold text-[#b99560]">بيانات الخدمة</span>
+              <h2 id="setup-title" className="m-0 text-xl font-extrabold">إنت دفعة إيه؟</h2>
+            </div>
+            <span className="rounded-lg border border-[#414137] px-2 py-1 text-xs text-[#6d6c61]">01</span>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-bold text-[#c4c1b6]">دفعة التجنيد</label>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-[9px]">
+              {BATCHES.map((batch) => (
+                <button
+                  type="button"
+                  key={batch.month}
+                  aria-pressed={profile.batchMonth === batch.month}
+                  onClick={() => update("batchMonth", batch.month)}
+                  className={`min-w-0 rounded-xl border px-1 py-2.5 transition sm:px-2 ${profile.batchMonth === batch.month ? "border-[#c99a57] bg-[#c99a57]/[0.13] text-[#f0c17e] shadow-[inset_0_0_0_1px_rgba(201,154,87,0.12)]" : "border-[#3a3b32] bg-[#24251f] text-[#b9b7ac] hover:border-[#9c7848]"}`}
+                >
+                  <strong className="block text-xl font-black leading-tight sm:text-[22px]">{batch.month}</strong>
+                  <span className="mt-1 block text-[9px] sm:text-[10px]">{batch.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex justify-center">
-            <button 
-              onClick={resetDate} 
-              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-linear-to-r from-amber-500 to-amber-600 text-amber-900 rounded-lg sm:rounded-xl font-semibold shadow-lg hover:from-amber-600 hover:to-amber-700 transform hover:scale-105 transition-all duration-200 text-sm sm:text-base"
-            >
-              اختيار افتراضي
-            </button>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <label htmlFor="year" className="mb-2 block text-xs font-bold text-[#c4c1b6]">سنة الالتحاق</label>
+              <select id="year" value={profile.enlistmentYear} onChange={(event) => update("enlistmentYear", Number(event.target.value))} className="h-[47px] w-full rounded-[10px] border border-[#414137] bg-[#24251f] px-3 text-sm text-[#eeeae0] outline-none focus:border-[#c99a57]">
+                {Array.from({ length: 12 }, (_, index) => new Date().getFullYear() - 5 + index).map((year) => <option value={year} key={year}>{year}</option>)}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="duration" className="mb-2 block text-xs font-bold text-[#c4c1b6]">مدة الخدمة</label>
+              <select id="duration" value={profile.durationMonths} onChange={(event) => update("durationMonths", Number(event.target.value))} className="h-[47px] w-full rounded-[10px] border border-[#414137] bg-[#24251f] px-3 text-sm text-[#eeeae0] outline-none focus:border-[#c99a57]">
+                {COMMON_DURATIONS.map((months) => <option value={months} key={months}>{formatDuration(months)}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
+          <p className="mt-3 text-[10px] text-[#77786e]">اختار مدة خدمتك الفعلية حسب موقفك التجنيدي. المدد هنا بالشهور.</p>
+        </section>
 
-        {/* Enhanced countdown display */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 text-center mb-6 sm:mb-8">
-          <div className="countdown-card">
-            <div className="countdown-number">{toArabicNumerals(days)}</div>
-            <div className="countdown-label">أيام</div>
+        <section aria-live="polite" className="mt-3 rounded-[20px] border border-[#cd9f5b]/25 bg-gradient-to-br from-[#352f23] to-[#1f201a] p-[18px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-[#c6bba8]">موعد انتهاء خدمتك المتوقع</span>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${completed ? "bg-white/10 text-[#b9c5bb]" : started ? "bg-[#8fab5d]/[0.13] text-[#b9cb91]" : "bg-[#dcb779]/[0.12] text-[#dcb779]"}`}>
+              {completed ? "خلصت الخدمة" : started ? "في الخدمة" : "لسه ما بدأتش"}
+            </span>
           </div>
-          <div className="countdown-card">
-            <div className="countdown-number">{toArabicNumerals(String(hours).padStart(2, '0'))}</div>
-            <div className="countdown-label">ساعات</div>
-          </div>
-          <div className="countdown-card">
-            <div className="countdown-number">{toArabicNumerals(String(minutes).padStart(2, '0'))}</div>
-            <div className="countdown-label">دقائق</div>
-          </div>
-          <div className="countdown-card">
-            <div className="countdown-number animate-pulse">{toArabicNumerals(String(seconds).padStart(2, '0'))}</div>
-            <div className="countdown-label">ثواني</div>
-          </div>
-        </div>
 
-        {/* Share button and target date */}
-        <div className="text-center space-y-4 sm:space-y-5">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={shareCountdown}
-              className="flex-1 py-3 sm:py-3.5 bg-linear-to-r from-amber-600 to-amber-700 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg shadow-xl hover:from-amber-700 hover:to-amber-800 transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 text-amber-100"
-            >
-              شارك العدّاد
-            </button>
-            {/* <button
-              onClick={shareURL}
-              className="flex-1 py-3.5 bg-linear-to-r from-amber-500 to-amber-400 rounded-2xl font-bold text-lg shadow-xl hover:from-amber-600 hover:to-amber-500 tr  ansform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 text-white"
-            >
-              شارك الرابط
-            </button> */}
+          <div className="my-2 mb-5 text-[clamp(23px,5vw,32px)] font-black tracking-tight text-[#f0c17e]">{formatDate(lastServiceDay)}</div>
+
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-[9px]">
+            {[
+              { value: days, label: "يوم" },
+              { value: hours, label: "ساعة" },
+              { value: minutes, label: "دقيقة" },
+              { value: seconds, label: "ثانية" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-[#e2b36c]/[0.18] bg-black/25 px-1 py-3 text-center">
+                <strong className="block text-[clamp(23px,5vw,31px)] font-extrabold leading-tight tabular-nums text-[#f4eee2]">{String(item.value).padStart(2, "0")}</strong>
+                <span className="mt-1 block text-[10px] text-[#a69b88]">{item.label}</span>
+              </div>
+            ))}
           </div>
+
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between text-[11px] text-[#c4bdaf]">
+              <span>رحلة الخدمة</span><strong className="tabular-nums text-[#e5b875]">{progress.toFixed(1)}%</strong>
+            </div>
+            <div role="progressbar" aria-label="نسبة إتمام الخدمة" aria-valuenow={Number(progress.toFixed(1))} aria-valuemin={0} aria-valuemax={100} className="h-[7px] overflow-hidden rounded-full bg-[#444238]">
+              <span className="block h-full rounded-full bg-gradient-to-l from-[#8c683d] to-[#e2b36c] transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="mt-2 flex justify-between text-[9px] text-[#77766c]">
+              <span>البداية: {formatDate(enlistmentDate)}</span><span>النهاية</span>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5 border-t border-white/[0.08] pt-4">
+            <div className="flex flex-col gap-1"><span className="text-[10px] text-[#858478]">مدة الخدمة</span><strong className="text-xs text-[#ded9cd]">{formatDuration(profile.durationMonths)}</strong></div>
+            <div className="flex flex-col gap-1"><span className="text-[10px] text-[#858478]">تاريخ الالتحاق</span><strong className="text-xs text-[#ded9cd]">{formatDate(enlistmentDate)}</strong></div>
+          </div>
+
+          <button type="button" onClick={share} className="mt-5 w-full rounded-[11px] bg-gradient-to-l from-[#d7a45e] to-[#e8c18a] px-4 py-3 text-[13px] font-black text-[#211b12] transition hover:-translate-y-px hover:brightness-105">
+            <span className="ml-2 text-lg align-[-1px]">↗</span>{copied ? "تم نسخ الرابط" : "شارك عدّادك"}
+          </button>
+
           
-          <p className="text-sm sm:text-base text-amber-200/80 w-fit mx-auto px-2">
-            التاريخ المستهدف: <span className="font-bold text-amber-300 text-base sm:text-lg">{formatDMY(targetDateISO)}</span>
-          </p>
-        </div>
-      </div>
-      
-      {/* Notification Modal */}
-      <NotificationModal
-        message={notification.message}
-        type={notification.type}
-        isOpen={notification.isOpen}
-        onClose={closeNotification}
-      />
-    </div>
-  )
-}
+          <p className="mt-3 text-center text-[9px] leading-5 text-[#77766d]">الحساب تقديري بناءً على تاريخ الدفعة والمدة المختارة. راجع تاريخ التسريح الرسمي مع وحدتك.</p>
+        </section>
 
-export default App
+        <footer className="flex items-center justify-between px-1 py-4 text-[10px] text-[#77776d]">
+          <span>هانت. يوم ورا يوم.</span>
+          <button type="button" onClick={reset} className="text-[#a99b83] underline underline-offset-4">إعادة ضبط</button>
+        </footer>
+      </div>
+    </main>
+  );
+}

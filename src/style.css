@@ -1,7 +1,33 @@
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"); 
 @import "tailwindcss";
 
+:root {
+  font-family: "Cairo";
+}
+:root {
+  font-family: "Cairo";
+}
+html {
+  min-width: 320px;
+  background: #10110f;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
 /* Animation for modal notifications */
-@keyframes fade-in {
+/* @keyframes fade-in {
   0% {
     opacity: 0;
     transform: translateY(-20px) scale(0.9);
@@ -14,10 +40,10 @@
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
-}
+} */
 
 /* Custom countdown card styles with army theme */
-.countdown-card {
+/* .countdown-card {
   padding: 1rem;
   background: linear-gradient(135deg, rgba(180, 83, 9, 0.2), rgba(146, 64, 14, 0.3));
   backdrop-filter: blur(4px);
@@ -47,17 +73,17 @@
   color: rgba(254, 243, 199, 0.9);
   font-weight: 500;
   margin-top: 0.25rem;
-}
+} */
 
 /* Enhanced Arabic text rendering */
-* {
+/* * {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   direction: rtl;
   text-align: right;
-}
+} */
 
 /* Custom glow effects with army theme */
-.countdown-card::before {
+/* .countdown-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -72,10 +98,10 @@
 
 .countdown-card:hover::before {
   opacity: 1;
-}
+} */
 
 /* Responsive adjustments */
-@media (min-width: 640px) {
+/* @media (min-width: 640px) {
   .countdown-card {
     padding: 1.25rem;
     border-radius: 1rem;
@@ -104,4 +130,4 @@
   .countdown-label {
     font-size: 0.875rem;
   }
-}
+} */
