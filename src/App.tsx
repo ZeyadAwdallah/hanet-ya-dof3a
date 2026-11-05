@@ -11,7 +11,7 @@ const BATCHES: { month: BatchMonth; label: string }[] = [
 ];
 
 // Durations are selectable month counts, not official qualification mappings.
-const COMMON_DURATIONS = [12, 14, 18, 19, 24, 36, 38];
+const COMMON_DURATIONS = [12, 14, 18, 19, 24,26, 36, 38];
 const STORAGE_KEY = "military-service-profile-v2";
 
 type Profile = {
@@ -161,10 +161,10 @@ export default function App() {
 
       <div className="relative mx-auto w-full max-w-[650px]">
         <header className="flex items-center justify-between pb-8 text-xs text-[#c5c2b8]">
-          <a href="/" aria-label="عداد الخدمة" className="flex items-center gap-2.5 text-sm font-extrabold text-[#f4f2ed] no-underline">
+          <div  className="flex items-center gap-2.5 text-sm font-extrabold text-[#f4f2ed]">
         <img src="./assets/icon.png" alt="" className="w-12 l-12"/>
             <span>عداد الخدمة</span>
-          </a>
+          </div>
           <span className="text-[#858579]">حاسبة الخدمة العسكرية</span>
         </header>
 
