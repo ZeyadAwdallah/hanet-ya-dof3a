@@ -162,7 +162,7 @@ export default function App() {
       <div className="relative mx-auto w-full max-w-[650px]">
         <header className="flex items-center justify-between pb-8 text-xs text-[#c5c2b8]">
           <a href="/" aria-label="عداد الخدمة" className="flex items-center gap-2.5 text-sm font-extrabold text-[#f4f2ed] no-underline">
-        <img src="src/assets/icon.png" alt="" className="w-12 l-12"/>
+        <img src="./assets/icon.png" alt="" className="w-12 l-12"/>
             <span>عداد الخدمة</span>
           </a>
           <span className="text-[#858579]">حاسبة الخدمة العسكرية</span>
