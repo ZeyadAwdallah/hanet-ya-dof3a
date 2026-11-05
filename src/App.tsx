@@ -149,11 +149,6 @@ export default function App() {
 
   
 
-  function  reset() {
-    const fresh = getInitialProfile();
-    setProfile({ ...fresh, durationMonths: 12 });
-  }
-
   return (
     <main dir="rtl" className="relative min-h-screen overflow-hidden bg-[#10110f] px-3 py-5 font-[Cairo] text-[#f4f2ed] sm:px-5 sm:py-8">
       <div className="pointer-events-none absolute -right-40 top-1/4 h-80 w-80 rounded-full bg-[#d59a43]/10 blur-[100px]" />
@@ -270,10 +265,6 @@ export default function App() {
           <p className="mt-3 text-center text-[9px] leading-5 text-[#77766d]">الحساب تقديري بناءً على تاريخ الدفعة والمدة المختارة. راجع تاريخ التسريح الرسمي مع وحدتك.</p>
         </section>
 
-        <footer className="flex items-center justify-between px-1 py-4 text-[10px] text-[#77776d]">
-          <span>هانت. يوم ورا يوم.</span>
-          <button type="button" onClick={reset} className="text-[#a99b83] underline underline-offset-4">إعادة ضبط</button>
-        </footer>
       </div>
     </main>
   );
